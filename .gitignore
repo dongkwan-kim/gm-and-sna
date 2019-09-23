@@ -554,3 +554,8 @@ tags
 [._]*.un~
 
 # End of https://www.gitignore.io/api/vim,git,code,latex,macos,python,pycharm+all
+
+*.txt
+*.pkl
+*.pdf
+*.gz
