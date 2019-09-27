@@ -559,3 +559,4 @@ tags
 *.pkl
 *.pdf
 *.gz
+tex*
