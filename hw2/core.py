@@ -20,18 +20,16 @@ def tqdm_s(_iter):
         return _iter
 
 
-def core(adjdict: Dict[int, List[int]]) -> Dict[int, int]:
-
+def _get_mapping(adjdict):
     node_set = set()
     for node_id, adjacent in adjdict.items():
         node_set.update([node_id] + adjacent)
-    N = len(node_set)
-
-    # Index Mapping
     node_id_to_idx = {node_id: idx for idx, node_id in enumerate(node_set)}
     idx_to_node_id = {idx: node_id for idx, node_id in enumerate(node_set)}
+    return node_set, node_id_to_idx, idx_to_node_id
 
-    # to_followings, to_followers: Dict[int, List[int]]
+
+def _get_followings_and_followers(adjdict, node_id_to_idx, N):
     to_followings = {}
     to_followers = {idx: [] for idx in range(N)}
     for node_id in adjdict:
@@ -40,6 +38,17 @@ def core(adjdict: Dict[int, List[int]]) -> Dict[int, int]:
         for f_id in adjdict[node_id]:
             to_followers[node_id_to_idx[f_id]].append(idx)
     to_followers = {k: np.asarray(v) for k, v in to_followers.items()}
+    return to_followings, to_followers
+
+
+def core(adjdict: Dict[int, List[int]]) -> Dict[int, int]:
+
+    # Index Mapping
+    node_set, node_id_to_idx, idx_to_node_id = _get_mapping(adjdict)
+    N = len(node_set)
+
+    # to_followings, to_followers: Dict[int, np.ndarray[int]]
+    to_followings, to_followers = _get_followings_and_followers(adjdict, node_id_to_idx, N)
 
     # Degree
     degree = np.asarray([_len(to_followings, idx) + _len(to_followers, idx) for idx in range(N)])
@@ -126,6 +135,7 @@ if __name__ == '__main__':
         assert len(test_result) == len(test_coredict)
         for test_k in test_coredict:
             assert test_result[test_k] == test_coredict[test_k]
+        print("Test passed")
 
     else:
         from time import time
