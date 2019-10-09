@@ -205,6 +205,23 @@ if __name__ == '__main__':
         assert len(test_result) == len(test_scc)
         for ts, tr in zip(sorted(test_scc), sorted(test_result)):
             assert ts == tr, "{} != {}".format(ts, tr)
+
+        test_adjdict = {1: [2],
+                        2: [3, 4],
+                        3: [4, 6],
+                        4: [1, 5],
+                        5: [6],
+                        6: [],
+                        7: [8, 9],
+                        8: [9, 10, 11],
+                        9: [7],
+                        10: [],
+                        11: [10]}
+        test_scc = scc(test_adjdict)
+        test_result = [{6}, {5}, {1, 2, 3, 4}, {10}, {11}, {8, 9, 7}]
+        assert len(test_result) == len(test_scc)
+        for ts, tr in zip(sorted(test_scc), sorted(test_result)):
+            assert ts == tr, "{} != {}".format(ts, tr)
         print("TEST finished")
 
     else:
