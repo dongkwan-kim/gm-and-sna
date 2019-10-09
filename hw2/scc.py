@@ -2,6 +2,8 @@
 import numpy as np
 from typing import Dict, List, Set, Tuple
 
+from collections import defaultdict
+
 
 def tqdm_s(_iter):
     try:
@@ -87,6 +89,59 @@ def _scc_one(vid, to_followings, visit_index, v_index, v_lowlink, stack, v_on_st
 
     _scc_list = list()
 
+    _call_stack = []
+    _v_to_num_called = defaultdict(lambda: -1)
+
+    def _call(*args):
+        for x in args:
+            _call_stack.append(x)
+            _v_to_num_called[x] += 1
+
+    _call(vid)
+    while len(_call_stack) != 0:
+
+        vid = _call_stack.pop()
+
+        # Set the depth index for v to the smallest unused index
+        if _v_to_num_called[vid] == 0:
+            v_index[vid] = visit_index
+            v_lowlink[vid] = visit_index
+            visit_index += 1
+            stack.append(vid)
+            v_on_stack[vid] = 1
+
+        # Consider successors of vid
+        for fid in to_followings[vid][_v_to_num_called[vid]:]:
+            # Successor fid has not yet been visited; recurse on it.
+            if v_index[fid] == -1 and fid in to_followings:
+                _call(vid, fid)
+                break
+
+            # Successor w is in stack S and hence in the current SCC
+            # If w is not on stack, then (v, w) is a cross-edge in the DFS tree and must be ignored
+            elif v_on_stack[fid]:
+                v_lowlink[vid] = min(v_lowlink[vid], v_index[fid])
+        else:
+            # If vid is a root node, pop the stack and generate an SCC
+            if v_index[vid] == v_lowlink[vid]:
+                wid, new_scc = -1, set()
+                while wid != vid:
+                    wid = stack.pop()
+                    v_on_stack[wid] = 0
+                    new_scc.add(wid)
+                _scc_list.append(new_scc)
+
+            if len(_call_stack) != 0:
+                vid, fid = _call_stack[-1], vid
+                v_lowlink[vid] = min(v_lowlink[vid], v_lowlink[fid])
+
+    return _scc_list, visit_index, v_index, v_lowlink, stack, v_on_stack
+
+
+def _scc_one_recursive(vid, to_followings, visit_index, v_index, v_lowlink, stack, v_on_stack) -> Tuple:
+
+    _scc_list = list()
+
     # Set the depth index for v to the smallest unused index
     v_index[vid] = visit_index
     v_lowlink[vid] = visit_index
@@ -98,7 +153,7 @@ def _scc_one(vid, to_followings, visit_index, v_index, v_lowlink, stack, v_on_st
     for fid in to_followings[vid]:
         # Successor fid has not yet been visited; recurse on it.
         if v_index[fid] == -1 and fid in to_followings:
-            new_scc_list, visit_index, v_index, v_lowlink, stack, v_on_stack = _scc_one(
+            new_scc_list, visit_index, v_index, v_lowlink, stack, v_on_stack = _scc_one_recursive(
                 fid, to_followings, visit_index, v_index, v_lowlink, stack, v_on_stack)
             _scc_list += new_scc_list
             v_lowlink[vid] = min(v_lowlink[vid], v_lowlink[fid])
