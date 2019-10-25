@@ -1,30 +1,34 @@
 import queue
 from typing import Dict, List, Set, Iterator
 
+
 # Class for graph
 class Graph:
-    def __init__ (self):
+    def __init__(self):
         self.__nodes: Dict[int, List[int]] = {}
-    #enddef
 
-    def add_node (self, node: int):
+    # enddef
+
+    def add_node(self, node: int):
         if node not in self.__nodes:
             self.__nodes[node] = []
-        #endif
-    #enddef
+        # endif
 
-    def add_edge (self, u: int, v: int):
+    # enddef
+
+    def add_edge(self, u: int, v: int):
         if u not in self.__nodes:
             self.__nodes[u] = []
-        #endif
+        # endif
         if v not in self.__nodes:
             self.__nodes[v] = []
-        #endif
+        # endif
         self.__nodes[u].append(v)
         self.__nodes[v].append(u)
-    #enddef
 
-    def remove_node (self, node: int):
+    # enddef
+
+    def remove_node(self, node: int):
         try:
             nbrs: List[int] = self.__nodes[node]
             del self.__nodes[node]
@@ -33,54 +37,61 @@ class Graph:
         else:
             for n in nbrs:
                 self.__nodes[n].remove(node)
-            #endfor
-        #endtry
-    #enddef
+            # endfor
+        # endtry
+
+    # enddef
 
     @property
-    def nodes (self) -> List[int]:
+    def nodes(self) -> List[int]:
         return list(self.__nodes.keys())
-    #enddef
 
-    def neighbors (self, node: int) -> Iterator[int]:
+    # enddef
+
+    def neighbors(self, node: int) -> Iterator[int]:
         return iter(self.__nodes[node])
-    #enddef
+
+    # enddef
 
     @property
-    def degree (self) -> Dict[int, int]:
+    def degree(self) -> Dict[int, int]:
         return {k: len(v) for k, v in self.__nodes.items()}
-    #enddef
-#endclass
+    # enddef
+
+
+# endclass
 
 
 # Convert adjacency dictionary to Graph
-def adjdict_to_G (adjdict: Dict[int, List[int]]) -> Graph:
+def adjdict_to_G(adjdict: Dict[int, List[int]]) -> Graph:
     G = Graph()
 
     for node in adjdict:
         nbs = adjdict[node]
         if len(nbs) == 0:
             G.add_node(node)
-        #endif
+        # endif
         for nb in nbs:
             G.add_edge(node, nb)
-        #endfor
-    #endfor
+        # endfor
+    # endfor
 
     return G
-#enddef
+
+
+# enddef
 
 
 # Implementation of the non-recursive WCC algorithm
-def wcc (adjdict: Dict[int, List[int]]) -> List[Set[int]]:
-    wcc_list: List[Set[int]] = [] # List of wcc
+def wcc(adjdict: Dict[int, List[int]]) -> List[Set[int]]:
+    wcc_list: List[Set[int]] = []  # List of wcc
 
     G: Graph = adjdict_to_G(adjdict)
     nodeVisited: Dict[int, bool] = {i: False for i in G.nodes}
 
     for node in G.nodes:
         if not nodeVisited[node]:
-            newWCC: Set[int] = set() # Start a new WCC
+            newWCC: Set[int] = set()  # Start a new WCC
             q = queue.Queue()
             q.put(node)
             nodeVisited[node] = True
@@ -94,13 +105,13 @@ def wcc (adjdict: Dict[int, List[int]]) -> List[Set[int]]:
                     if not nodeVisited[v]:
                         q.put(v)
                         nodeVisited[v] = True
-                    #endif
-                #endfor
-            #endwhile
+                    # endif
+                # endfor
+            # endwhile
 
             wcc_list.append(newWCC)
-        #endif
-    #endfor
+        # endif
+    # endfor
 
     return wcc_list
-#enddef
+# enddef
