@@ -1,4 +1,5 @@
 from typing import Dict, List, Tuple, Set
+from time import time
 
 import numpy as np
 from wcc import wcc
@@ -11,6 +12,14 @@ def tqdm_s(_iter):
         return tqdm(_iter)
     except ModuleNotFoundError:
         return _iter
+
+
+def pbar_s(total):
+    try:
+        from tqdm import tqdm
+        return tqdm(total=total)
+    except ModuleNotFoundError:
+        return None
 
 
 def _len(to_something_list, key):
@@ -38,6 +47,15 @@ def _get_followings_and_followers(adjdict, node_id_to_idx, N):
         for f_id in adjdict[node_id]:
             to_followers[node_id_to_idx[f_id]].append(idx)
     return to_followings, to_followers
+
+
+def _get_idx_to_degree(to_followings, to_followers, N_or_node_set: int or set):
+    if isinstance(N_or_node_set, int):
+        idx_to_degree = {idx: _len(to_followings, idx) + _len(to_followers, idx) for idx in range(N_or_node_set)}
+    else:
+        idx_to_degree = {idx: _len(to_followings, idx) + _len(to_followers, idx) for idx in N_or_node_set}
+
+    return idx_to_degree
 
 
 def _get_top_k_degree_nodes(idx_to_degree: Dict[int, int], k: int, idx_to_node_id: Dict[int, int]) -> List[int]:
@@ -81,6 +99,30 @@ def _remove_nodes(target_indices: List[int], idx_to_degree: Dict[int, int], to_f
     return idx_to_degree, to_followings
 
 
+def _get_subgraph(partial_node_set: Set[int], to_followings: Dict[int, List[int]], to_followers: Dict[int, List[int]]) \
+        -> Tuple[Dict[int, int], Dict[int, List[int]]]:
+
+    to_followings_subgraph = {n: None for n in partial_node_set}
+    to_followers_subgraph = {n: [] for n in partial_node_set}
+
+    for n in partial_node_set:
+        for follower in to_followers[n]:
+            if follower in partial_node_set and to_followings_subgraph[follower] is None:
+                to_followings_subgraph[follower] = [ff for ff in to_followings[follower] if ff in partial_node_set]
+
+    for u, followings in to_followings_subgraph.items():
+        if followings is None:  # nodes that do not follow nodes in partial_node_set.
+            if u in to_followings:  # nodes that follow removed nodes only.
+                to_followings_subgraph[u] = to_followings[u]
+            else:
+                to_followings_subgraph[u] = []
+
+        for f in to_followings_subgraph[u]:
+            to_followers_subgraph[f].append(u)
+
+    return to_followings_subgraph, to_followers_subgraph
+
+
 def slashburn(adjdict, k=1):
 
     # Index Mapping
@@ -89,14 +131,15 @@ def slashburn(adjdict, k=1):
 
     # to_followings, to_followers: Dict[int, List[int]]
     to_followings, to_followers = _get_followings_and_followers(adjdict, node_id_to_idx, N)
-
-    idx_to_degree = {idx: _len(to_followings, idx) + _len(to_followers, idx) for idx in range(N)}
+    idx_to_degree = _get_idx_to_degree(to_followings, to_followers, N)
 
     hub_indices, burned_indices, gcc = [], [], None
     i = 0
+    pbar = pbar_s(total=N)
     while gcc is None or len(gcc) > k:
 
         i += 1
+        num_survived = len(idx_to_degree)
 
         # Find k-hubset.
         top_k_degree_nodes = _get_top_k_degree_nodes(idx_to_degree, k, idx_to_node_id)
@@ -113,11 +156,16 @@ def slashburn(adjdict, k=1):
 
         # Add nodes in non-giant connected components to the back of Γ, in
         # the decreasing order of sizes of connected components they belong to.
-        _burned_indices_at_this_iter = sum([list(small_wcc) for small_wcc in reversed(small_components)], [])
+        _burned_indices_at_this_iter = []
+        for small_wcc in small_components:
+            _burned_indices_at_this_iter = _burned_indices_at_this_iter + list(small_wcc)
         burned_indices = _burned_indices_at_this_iter + burned_indices
 
         # Set G to be the giant connected component(GCC) of G'.
-        idx_to_degree, to_followings = _remove_nodes(_burned_indices_at_this_iter, idx_to_degree, to_followings)
+        to_followings, to_followers = _get_subgraph(gcc, to_followings, to_followers)
+        idx_to_degree = _get_idx_to_degree(to_followings, to_followers, gcc)
+
+        pbar.update(num_survived - len(idx_to_degree))
 
     ordered_indices = hub_indices
     if gcc:
@@ -170,7 +218,7 @@ def load_dataset(path, preprocess) -> Dict[int, List[int]]:
 # to evaluate your implementation.
 if __name__ == '__main__':
 
-    MODE = "test"
+    MODE = "scalability"
 
     if MODE == "test":
 
@@ -225,6 +273,12 @@ if __name__ == '__main__':
             assert r == a, "{} should be {}".format(r, a)
         assert abs(test_result[1] - test_answer[1]) < 0.00001, "{} should be {}".format(test_result[1], test_answer[1])
         print("Test passed")
+
+    elif MODE == "scalability":
+        email_adjdict = load_email_dataset()
+        t = time()
+        slashburn(email_adjdict)
+        print("Time: {}s".format(time() - t))
 
     elif MODE == "analysis":
         pass
