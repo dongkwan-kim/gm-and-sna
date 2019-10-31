@@ -173,7 +173,8 @@ def slashburn(adjdict, k=1):
         to_followings, to_followers = _get_subgraph(gcc, to_followings, to_followers)
         idx_to_degree = _get_idx_to_degree(to_followings, to_followers, gcc)
 
-        pbar.update(num_survived - len(idx_to_degree))
+        if pbar:
+            pbar.update(num_survived - len(idx_to_degree))
 
     ordered_indices = hub_indices
     if gcc:
@@ -300,7 +301,7 @@ def analysis_wwr():
 # to evaluate your implementation.
 if __name__ == '__main__':
 
-    MODE = "analysis_wwr"
+    MODE = "test"
 
     if MODE == "test":
 
