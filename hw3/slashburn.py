@@ -1,9 +1,18 @@
+from copy import deepcopy
 from typing import Dict, List, Tuple, Set
 from time import time
 
 import numpy as np
 from wcc import wcc
 # No external imports are allowed other than numpy
+try:
+    import scipy.sparse as sparse
+    import matplotlib.pylab as plt
+    import networkx as nx
+    from scipy.stats import skew
+    import snap
+except ModuleNotFoundError:
+    pass
 
 
 def tqdm_s(_iter):
@@ -213,12 +222,75 @@ def load_dataset(path, preprocess) -> Dict[int, List[int]]:
     return _adjdict
 
 
+def draw_sparsity_pattern(adjdict: Dict[int, List[int]], node_order: List[int]=None, save_fig=False, prefix="",
+                          **kwargs):
+    g = nx.DiGraph()
+    for u, vs in adjdict.items():
+        g.add_edges_from([(u, v) for v in vs])
+    csr_matrix = nx.to_scipy_sparse_matrix(g, node_order)
+    plt.spy(csr_matrix, **kwargs)
+    if not save_fig:
+        plt.show()
+    else:
+        path = "./tex/figs/{}_sparsity_pattern.png".format(prefix)
+        plt.savefig(path, bbox_inches='tight')
+        print("Saved {}".format(path))
+    plt.clf()
+
+
+def analysis_k(markersize=0.05):
+    stanford_data = load_stanford_dataset()
+    draw_sparsity_pattern(stanford_data, save_fig=True, prefix="stanford_original",
+                          markersize=markersize)
+    for k in [100, 1000, 10000, 20000]:
+        stanford_result = slashburn(deepcopy(stanford_data), k=k)
+        draw_sparsity_pattern(stanford_data, stanford_result[0], save_fig=True, prefix="stanford_{}".format(k),
+                              markersize=markersize)
+        print("Done: {}".format(k))
+
+
+def analysis_wwr():
+
+    stanford_data = load_stanford_dataset()
+
+    num_edges, node_list = 0, []
+    for u, vs in stanford_data:
+        num_edges += len(vs)
+        node_list += vs
+    num_nodes = len(set(node_list))
+
+    degree_skew_list, wwr_list = [], []
+    a, b = 0.6, 0.1
+    c_list = [0.05, 0.1, 0.15, 0.2, 0.25]
+    for c in c_list:
+
+        g = snap.GenRMat(num_nodes, num_edges, a, b, c, snap.TRnd())
+
+        g_adjdict = {ni.GetId(): [] for ni in g.Nodes()}
+        for ei in g.Edges():
+            g_adjdict[ei.GetSrcNId()] += ei.GetDstNId()
+
+        g_degree = np.asarray([ni.GetOutDeg() + ni.GetInDeg() for ni in g.Nodes()])
+        degree_skew = skew(g_degree)
+        degree_skew_list.append(degree_skew)
+
+        orderings, wwr = slashburn(g_adjdict, k=1000)
+        wwr_list.append(wwr)
+
+    stanford_orderings, standford_wwr = slashburn(deepcopy(stanford_data), k=1000)
+
+    print("\t".join(["graph", "degree skew", "wing width ratio"]))
+    for c, degree_skew, wwr in zip(c_list, degree_skew_list, wwr_list):
+        print("\t".join(["c-{}".format(c), str(degree_skew), str(wwr)]))
+    print("\t".join(["web-Stanford", "-", str(standford_wwr)]))
+
+
 # You may add your own functions below to use them inside slashburn().
 # However, remember that we will only do: from slashburn import slashburn
 # to evaluate your implementation.
 if __name__ == '__main__':
 
-    MODE = "scalability"
+    MODE = "analysis_k"
 
     if MODE == "test":
 
@@ -280,8 +352,11 @@ if __name__ == '__main__':
         slashburn(email_adjdict)
         print("Time: {}s".format(time() - t))
 
-    elif MODE == "analysis":
-        pass
+    elif MODE == "analysis_k":
+        analysis_k()
+
+    elif MODE == "analysis_wwr":
+        analysis_wwr()
 
     else:  # Other unit tests.
         test_adjdict = {1: [1],
