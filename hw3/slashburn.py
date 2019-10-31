@@ -10,9 +10,8 @@ try:
     import matplotlib.pylab as plt
     import networkx as nx
     from scipy.stats import skew
-    import snap
-except ModuleNotFoundError:
-    pass
+except ModuleNotFoundError as e:
+    print("Not found!: {}".format(e))
 
 
 def tqdm_s(_iter):
@@ -251,24 +250,30 @@ def analysis_k(markersize=0.05):
 
 def analysis_wwr():
 
-    stanford_data = load_stanford_dataset()
+    try:
+        import snap
+    except ModuleNotFoundError:
+        pass
 
-    num_edges, node_list = 0, []
-    for u, vs in stanford_data:
+    stanford_data = load_stanford_dataset()
+    node_set, node_id_to_idx, idx_to_node_id = _get_mapping(stanford_data)
+    to_followings, to_followers = _get_followings_and_followers(stanford_data, node_id_to_idx, len(node_set))
+
+    num_nodes = len(node_set)
+    num_edges = 0
+    for u, vs in stanford_data.items():
         num_edges += len(vs)
-        node_list += vs
-    num_nodes = len(set(node_list))
 
     degree_skew_list, wwr_list = [], []
     a, b = 0.6, 0.1
     c_list = [0.05, 0.1, 0.15, 0.2, 0.25]
-    for c in c_list:
+    for c in tqdm_s(c_list):
 
         g = snap.GenRMat(num_nodes, num_edges, a, b, c, snap.TRnd())
 
         g_adjdict = {ni.GetId(): [] for ni in g.Nodes()}
         for ei in g.Edges():
-            g_adjdict[ei.GetSrcNId()] += ei.GetDstNId()
+            g_adjdict[ei.GetSrcNId()].append(ei.GetDstNId())
 
         g_degree = np.asarray([ni.GetOutDeg() + ni.GetInDeg() for ni in g.Nodes()])
         degree_skew = skew(g_degree)
@@ -277,12 +282,17 @@ def analysis_wwr():
         orderings, wwr = slashburn(g_adjdict, k=1000)
         wwr_list.append(wwr)
 
+        print("\nc: {}, ds: {}, wwr: {}".format(c, degree_skew, wwr))
+
+    idx_to_degree = _get_idx_to_degree(to_followings, to_followers, num_nodes)
+    stanford_degree_skew = skew(np.asarray([d for d in idx_to_degree.values()]))
     stanford_orderings, standford_wwr = slashburn(deepcopy(stanford_data), k=1000)
 
-    print("\t".join(["graph", "degree skew", "wing width ratio"]))
+    print("\n\n--- Result ---")
+    print("\t".join(["Graph (c or name)", "degree skewness", "Wing width ratio"]))
     for c, degree_skew, wwr in zip(c_list, degree_skew_list, wwr_list):
-        print("\t".join(["c-{}".format(c), str(degree_skew), str(wwr)]))
-    print("\t".join(["web-Stanford", "-", str(standford_wwr)]))
+        print("\t".join(["c-{}".format(c), str(round(degree_skew, 5)), str(round(wwr, 5))]))
+    print("\t".join(["web-Stanford", str(round(stanford_degree_skew, 5)), str(round(standford_wwr, 5))]))
 
 
 # You may add your own functions below to use them inside slashburn().
@@ -290,7 +300,7 @@ def analysis_wwr():
 # to evaluate your implementation.
 if __name__ == '__main__':
 
-    MODE = "analysis_k"
+    MODE = "analysis_wwr"
 
     if MODE == "test":
 
