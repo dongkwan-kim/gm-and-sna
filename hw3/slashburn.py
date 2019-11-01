@@ -72,9 +72,7 @@ def _get_top_k_degree_nodes(idx_to_degree: Dict[int, int], k: int, idx_to_node_i
         idx, deg = idx_and_deg
         return -deg, idx_to_node_id[idx]
 
-    if k == len(idx_to_degree):
-        return list(idx_to_degree.keys())
-    elif k < len(idx_to_degree):
+    if k <= len(idx_to_degree):
         sorted_degree = sorted(idx_to_degree.items(), key=cmp)
         return [idx for idx, degree in sorted_degree[:k]]
     else:
