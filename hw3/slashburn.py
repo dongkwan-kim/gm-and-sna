@@ -1,9 +1,9 @@
 from copy import deepcopy
-from typing import Dict, List, Tuple, Set
+import queue
+from typing import Dict, List, Tuple, Set, Iterator
 from time import time
 
 import numpy as np
-from wcc import wcc
 # No external imports are allowed other than numpy
 try:
     import scipy.sparse as sparse
@@ -12,6 +12,85 @@ try:
     from scipy.stats import skew
 except ModuleNotFoundError as e:
     print("Not found!: {}".format(e))
+
+
+class Graph:
+    def __init__(self):
+        self.__nodes: Dict[int, List[int]] = {}
+
+    # enddef
+
+    def add_node(self, node: int):
+        if node not in self.__nodes:
+            self.__nodes[node] = []
+
+    def add_edge(self, u: int, v: int):
+        if u not in self.__nodes:
+            self.__nodes[u] = []
+        if v not in self.__nodes:
+            self.__nodes[v] = []
+        self.__nodes[u].append(v)
+        self.__nodes[v].append(u)
+
+    def remove_node(self, node: int):
+        try:
+            nbrs: List[int] = self.__nodes[node]
+            del self.__nodes[node]
+        except KeyError:
+            pass
+        else:
+            for n in nbrs:
+                self.__nodes[n].remove(node)
+
+    @property
+    def nodes(self) -> List[int]:
+        return list(self.__nodes.keys())
+
+    def neighbors(self, node: int) -> Iterator[int]:
+        return iter(self.__nodes[node])
+
+    @property
+    def degree(self) -> Dict[int, int]:
+        return {k: len(v) for k, v in self.__nodes.items()}
+
+
+# Convert adjacency dictionary to Graph
+def adjdict_to_G(adjdict: Dict[int, List[int]]) -> Graph:
+    G = Graph()
+    for node in adjdict:
+        nbs = adjdict[node]
+        if len(nbs) == 0:
+            G.add_node(node)
+        for nb in nbs:
+            G.add_edge(node, nb)
+    return G
+
+
+# Implementation of the non-recursive WCC algorithm
+def wcc(adjdict: Dict[int, List[int]]) -> List[Set[int]]:
+    wcc_list: List[Set[int]] = []  # List of wcc
+
+    G: Graph = adjdict_to_G(adjdict)
+    nodeVisited: Dict[int, bool] = {i: False for i in G.nodes}
+
+    for node in G.nodes:
+        if not nodeVisited[node]:
+            newWCC: Set[int] = set()  # Start a new WCC
+            q = queue.Queue()
+            q.put(node)
+            nodeVisited[node] = True
+
+            # Using BFS
+            while not q.empty():
+                n = q.get()
+                newWCC.add(n)
+
+                for v in G.neighbors(n):
+                    if not nodeVisited[v]:
+                        q.put(v)
+                        nodeVisited[v] = True
+            wcc_list.append(newWCC)
+    return wcc_list
 
 
 def tqdm_s(_iter):
