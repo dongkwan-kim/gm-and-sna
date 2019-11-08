@@ -176,7 +176,8 @@ def slashburn(adjdict, k=1):
 
     ordered_indices = hub_indices
     if gcc:
-        ordered_indices += list(gcc)
+        sorted_gcc = sorted(gcc, key=lambda node_idx: -idx_to_degree[node_idx])
+        ordered_indices += sorted_gcc
     ordered_indices += burned_indices
 
     # Translation to ids.
