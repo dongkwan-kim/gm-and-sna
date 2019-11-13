@@ -2,6 +2,10 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 # No external imports are allowed other than numpy
+try:
+    import networkx as nx
+except ModuleNotFoundError as e:
+    print("Not found!: {}".format(e))
 
 
 def tqdm_s(_iter):
@@ -82,15 +86,38 @@ def seed_selection(graph: List[Tuple[int, int]], policy, n) -> List[int]:
 
     Outputs: a list of n integers, corresponding to n nodes.
     """
-    pass
+    node_set, node_id_to_idx, idx_to_node_id = _get_mapping(graph)
+
+    if policy == "degree":
+        to_neighbors = _get_to_neighbors(graph, node_id_to_idx, len(node_set))
+        idx_to_degree = _get_idx_to_degree(to_neighbors)
+        indices_sorted_by_degree = sorted(idx_to_degree, key=lambda idx: -idx_to_degree[idx])
+        selected_indices = indices_sorted_by_degree[:n]
+        return [idx_to_node_id[idx] for idx in selected_indices]
+
+    elif policy == "random":
+        selected_nodes = np.random.choice(list(node_set), size=n, replace=False)
+        return list(selected_nodes)
+
+    elif policy == "custom":
+        raise NotImplementedError
+
+    else:
+        raise ValueError
 
 
 if __name__ == '__main__':
 
-    MODE = "email"
+    MODE = "test"
 
     if MODE == "test":
-        pass
+        G = nx.karate_club_graph()
+
+        random_selected = seed_selection(graph=G.edges, policy="random", n=2)
+        print(random_selected)
+
+        degree_selected = seed_selection(graph=G.edges, policy="degree", n=2)
+        print(degree_selected)
 
     elif MODE == "email":
         email_dataset = load_email_dataset()
