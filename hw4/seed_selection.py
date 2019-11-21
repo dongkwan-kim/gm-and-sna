@@ -30,7 +30,7 @@ def _remove_self_loops_and_parallel_edges(graph: List[Tuple[int, int]]):
 
 
 def load_email_dataset(preprocess=True):
-    return load_dataset("../email-EuAll.txt", preprocess)
+    return load_dataset("../email-Enron.txt", preprocess)
 
 
 def load_dataset(path, preprocess) -> List[Tuple[int, int]]:
