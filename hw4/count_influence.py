@@ -162,10 +162,24 @@ def simulate(graph, policy_list, ratio_list, threshold_list, trial=1, init_seed=
     return simulated_dict
 
 
+def sprint(simulated_dict, mode):
+    pprint(simulated_dict)
+    print("{} -------".format(mode))
+    print("\t".join(["Policy", "Initial number of active nodes", "Payoff threshold"] +
+                    ["Average of # ", "Stdev of #"] +
+                    [str(t) for t in range(n_trials)]))
+    for k, v in ret.items():
+        n_an_at_inf = v["number_of_active_nodes_at_infinity"]
+        line_list = list(k) + [float(np.mean(n_an_at_inf)), float(np.std(n_an_at_inf))] + list(n_an_at_inf)
+        print("\t".join([str(x) for x in line_list]))
+
+
 if __name__ == '__main__':
 
-    MODE = "T"
     from seed_selection import seed_selection
+
+    n_trials = 10
+    MODE = "C"
 
     if MODE == "test":
         G = nx.karate_club_graph()
@@ -183,39 +197,41 @@ if __name__ == '__main__':
         print(ret)
         print("Elapsed: {}s".format(time() - t0))
 
+    elif MODE == "simulation_test":
+        email_dataset = load_email_dataset()
+        ret = simulate(email_dataset,
+                       ["degree", "random"],
+                       [r / 100 for r in [0.1, 0.25]],
+                       [0.5],
+                       trial=2)
+        sprint(ret, MODE)
+
+    elif MODE == "C":
+        email_dataset = load_email_dataset()
+        ret = simulate(email_dataset,
+                       ["custom"],
+                       [r / 100 for r in [0.25]],
+                       [0.5],
+                       trial=n_trials)
+        sprint(ret, MODE)
+
     elif MODE == "N":
-        n_trials = 10
         email_dataset = load_email_dataset()
         ret = simulate(email_dataset,
                        ["degree", "random"],
                        [r / 100 for r in [0.1, 0.25, 0.5, 1, 2]],
                        [0.5],
                        trial=n_trials)
-        pprint(ret)
-        print("\t".join(["Policy", "Initial number of active nodes", "Payoff threshold"] +
-                        ["Average number of active nodes at infinity"] +
-                        [str(t) for t in range(n_trials)]))
-        for k, v in ret.items():
-            n_an_at_inf = v["number_of_active_nodes_at_infinity"]
-            line_list = list(k) + [float(np.mean(n_an_at_inf))] + list(n_an_at_inf)
-            print("\t".join([str(x) for x in line_list]))
+        sprint(ret, MODE)
 
     elif MODE == "T":
-        n_trials = 10
         email_dataset = load_email_dataset()
         ret = simulate(email_dataset,
                        ["degree", "random"],
                        [r / 100 for r in [0.25]],
                        [0.2, 0.4, 0.5, 0.6, 0.8],
                        trial=n_trials)
-        pprint(ret)
-        print("\t".join(["Policy", "Initial number of active nodes", "Payoff threshold"] +
-                        ["Average number of active nodes at infinity"] +
-                        [str(t) for t in range(n_trials)]))
-        for k, v in ret.items():
-            n_an_at_inf = v["number_of_active_nodes_at_infinity"]
-            line_list = list(k) + [float(np.mean(n_an_at_inf))] + list(n_an_at_inf)
-            print("\t".join([str(x) for x in line_list]))
+        sprint(ret, MODE)
 
     else:
         raise ValueError
